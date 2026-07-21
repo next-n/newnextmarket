@@ -167,6 +167,29 @@ export class OrdersService {
 
     this.assertValidTransition(order.status, dto.status);
 
+    if (dto.status === OrderStatus.CANCELLED) {
+      const updatedOrder = await this.prisma.$transaction(async (tx: any) => {
+        await tx.order.update({
+          where: { id },
+          data: { status: OrderStatus.CANCELLED, cancelledAt: new Date() },
+        });
+        await tx.payment.updateMany({
+          where: { orderId: id, status: PaymentStatus.PENDING },
+          data: { status: PaymentStatus.CANCELLED },
+        });
+        return tx.order.findUniqueOrThrow({
+          where: { id },
+          include: this.orderInclude(true),
+        });
+      });
+
+      await this.audit(adminId, AuditAction.UPDATE, 'Order', id, {
+        from: order.status,
+        to: dto.status,
+      });
+      return this.toOrderResponse(updatedOrder, true);
+    }
+
     const updatedOrder = await this.prisma.order.update({
       where: { id },
       data: { status: dto.status },

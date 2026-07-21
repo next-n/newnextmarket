@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
@@ -73,6 +74,7 @@ export default function OrdersPage() {
         <h1 className="text-2xl font-semibold">Orders</h1>
         <p className="mt-1 text-sm text-muted-foreground">Review fulfillment and payment progress.</p>
         <p className="mt-3 inline-flex rounded-full bg-accent px-3 py-1 text-sm">{filterLabel}</p>
+        {statusFilter || paymentStatusFilter ? <Link href="/dashboard/orders" className="ml-3 text-sm font-medium text-primary hover:underline">View all orders</Link> : null}
       </div>
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <div className="overflow-hidden rounded-lg border bg-card">
