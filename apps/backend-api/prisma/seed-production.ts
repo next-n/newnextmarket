@@ -1,4 +1,4 @@
-import { AdminStatus, BannerStatus, CollectionStatus, Prisma, PrismaClient } from '@prisma/client';
+import { AdminStatus, BannerStatus, CollectionStatus, Prisma, PrismaClient, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -99,6 +99,17 @@ async function seedAdmin(roles: Map<string, { id: string }>) {
   await prisma.adminRole.createMany({ data: [{ adminId: admin.id, roleId: role.id }], skipDuplicates: true });
 }
 
+async function seedCustomer() {
+  const email = process.env.PRODUCTION_CUSTOMER_EMAIL?.trim().toLowerCase();
+  const password = process.env.PRODUCTION_CUSTOMER_PASSWORD;
+  if (!email || !password) throw new Error('PRODUCTION_CUSTOMER_EMAIL and PRODUCTION_CUSTOMER_PASSWORD are required.');
+  await prisma.user.upsert({
+    where: { email },
+    update: { firstName: 'Test', lastName: 'Customer', status: UserStatus.ACTIVE },
+    create: { email, password: await bcrypt.hash(password, SALT_ROUNDS), firstName: 'Test', lastName: 'Customer', status: UserStatus.ACTIVE },
+  });
+}
+
 async function seedSettings() {
   for (const [key, value, dataType, group, description] of settingSeeds) {
     await prisma.setting.upsert({
@@ -139,10 +150,11 @@ async function seedBanners(collections: Map<string, { id: string }>) {
 async function main() {
   const roles = await seedRoles();
   await seedAdmin(roles);
+  await seedCustomer();
   const collections = await seedCollections();
   await seedSettings();
   await seedBanners(collections);
-  console.log('Production bootstrap completed with five empty collections and no products, customers, orders, or coupons.');
+  console.log('Production bootstrap completed with five empty collections, current banners, one customer, and no products, orders, or coupons.');
 }
 
 main().catch((error: unknown) => { console.error(error); process.exit(1); }).finally(async () => prisma.$disconnect());
