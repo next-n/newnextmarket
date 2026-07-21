@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <html lang="en"><body><div className="page-shell">{children}</div></body></html>;
+  return <html lang="en"><body><div className="page-shell">{children}<footer className="footer"><div className="container">© 2026 NewNextMarket By La Min Htin. All rights reserved.</div></footer></div></body></html>;
 }
