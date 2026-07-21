@@ -16,6 +16,9 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 COPY --from=build /app/node_modules node_modules
+COPY --from=build /app/package.json package.json
+COPY --from=build /app/package-lock.json package-lock.json
+COPY --from=build /app/apps/backend-api/package.json apps/backend-api/package.json
 COPY --from=build /app/apps/backend-api/dist apps/backend-api/dist
 COPY --from=build /app/apps/backend-api/prisma apps/backend-api/prisma
 

@@ -8,6 +8,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME ?? "Admin Dashboard",
   description: "Store administration dashboard.",
+  icons: { icon: "/brand-mark.png" },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

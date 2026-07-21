@@ -142,7 +142,7 @@ async function main() {
   const collections = await seedCollections();
   await seedSettings();
   await seedBanners(collections);
-  console.log('Production bootstrap completed with three empty collections and no products, customers, orders, or coupons.');
+  console.log('Production bootstrap completed with five empty collections and no products, customers, orders, or coupons.');
 }
 
 main().catch((error: unknown) => { console.error(error); process.exit(1); }).finally(async () => prisma.$disconnect());
