@@ -22,10 +22,8 @@ const permissionMatrix: Record<string, string[]> = {
 
 const collectionSeeds = [
   ['New Arrivals', 'new-arrivals', 1],
-  ['Best Sellers', 'best-sellers', 2],
-  ['Running Shoes', 'running-shoes', 3],
-  ['Limited Edition', 'limited-edition', 4],
-  ['Sale', 'sale', 5],
+  ['Running Shoes', 'running-shoes', 2],
+  ['Sale', 'sale', 3],
 ] as const;
 
 const settingSeeds = [
@@ -39,7 +37,7 @@ const settingSeeds = [
 
 const bannerSeeds = [
   ['Run Your Way', 'run-your-way', 'Fresh Foam cushioning for daily miles.', 'PRODUCTION_BANNER_1_IMAGE_URL', 'running-shoes', 1],
-  ['Made for Every Day', 'made-for-every-day', 'Heritage style, modern comfort.', 'PRODUCTION_BANNER_2_IMAGE_URL', 'best-sellers', 2],
+  ['Made for Every Day', 'made-for-every-day', 'Heritage style, modern comfort.', 'PRODUCTION_BANNER_2_IMAGE_URL', 'new-arrivals', 2],
 ] as const;
 
 async function seedRoles() {
@@ -99,6 +97,16 @@ async function seedAdmin(roles: Map<string, { id: string }>) {
   await prisma.adminRole.createMany({ data: [{ adminId: admin.id, roleId: role.id }], skipDuplicates: true });
 }
 
+async function seedSettings() {
+  for (const [key, value, dataType, group, description] of settingSeeds) {
+    await prisma.setting.upsert({
+      where: { key },
+      update: { value: value as Prisma.InputJsonValue, dataType, group, description },
+      create: { key, value: value as Prisma.InputJsonValue, dataType, group, description },
+    });
+  }
+}
+
 async function seedCollections() {
   const collections = new Map<string, { id: string }>();
   for (const [name, slug, homepagePriority] of collectionSeeds) {
@@ -110,16 +118,6 @@ async function seedCollections() {
     collections.set(slug, collection);
   }
   return collections;
-}
-
-async function seedSettings() {
-  for (const [key, value, dataType, group, description] of settingSeeds) {
-    await prisma.setting.upsert({
-      where: { key },
-      update: { value: value as Prisma.InputJsonValue, dataType, group, description },
-      create: { key, value: value as Prisma.InputJsonValue, dataType, group, description },
-    });
-  }
 }
 
 async function seedBanners(collections: Map<string, { id: string }>) {
@@ -142,7 +140,7 @@ async function main() {
   const collections = await seedCollections();
   await seedSettings();
   await seedBanners(collections);
-  console.log('Production bootstrap completed without demo products, customers, orders, or coupons.');
+  console.log('Production bootstrap completed with three empty collections and no products, customers, orders, or coupons.');
 }
 
 main().catch((error: unknown) => { console.error(error); process.exit(1); }).finally(async () => prisma.$disconnect());
