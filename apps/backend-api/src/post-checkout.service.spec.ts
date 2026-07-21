@@ -358,6 +358,20 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
     });
   });
 
+  it('does not collect COD for a cancelled order', async () => {
+    tx.payment.findUnique.mockResolvedValue({
+      ...paidPayment,
+      method: PaymentMethod.CASH_ON_DELIVERY,
+      status: PaymentStatus.PENDING,
+      order: { ...order, status: OrderStatus.CANCELLED },
+    });
+
+    await expect(
+      paymentsService.collectCashOnDelivery('payment_1', 'admin_1'),
+    ).rejects.toThrow('Cancelled orders cannot be collected');
+    expect(tx.payment.update).not.toHaveBeenCalled();
+  });
+
   it('payment confirm reuses checkout confirmation and remains idempotent', async () => {
     prisma.payment.findFirst.mockResolvedValue({ orderId: 'order_1' });
     checkoutService.confirmPayment.mockResolvedValue({

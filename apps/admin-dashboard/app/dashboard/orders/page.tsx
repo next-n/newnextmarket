@@ -89,6 +89,7 @@ export default function OrdersPage() {
           <tbody>
             {orders.map((order) => {
               const payment = order.payment ?? order.payments?.[0];
+              const isCancelled = order.status === "CANCELLED";
               const canCollect = payment?.method === "CASH_ON_DELIVERY" && payment.status === "PENDING";
               return (
                 <tr key={order.id} className="border-b last:border-0">
@@ -100,16 +101,17 @@ export default function OrdersPage() {
                     {canCollect ? (
                       <button
                         type="button"
-                        disabled={busyPaymentId === payment.id}
+                        disabled={isCancelled || busyPaymentId === payment.id}
                         onClick={() => collectPayment(payment.id)}
-                        className="rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
+                        title={isCancelled ? "Cancelled orders cannot be collected" : undefined}
+                        className="rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {busyPaymentId === payment.id ? "Saving…" : "Mark collected"}
                       </button>
                     ) : null}
                   </td>
                   <td className="p-4">
-                    <select value={order.status} onChange={(e) => updateStatus(order.id, e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm">
+                    <select disabled={isCancelled} value={order.status} onChange={(e) => updateStatus(order.id, e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm disabled:cursor-not-allowed disabled:opacity-60">
                       {statuses.map((status) => <option key={status}>{status}</option>)}
                     </select>
                   </td>

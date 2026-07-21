@@ -136,6 +136,10 @@ export class PaymentsService {
         throw new NotFoundException('Payment not found');
       }
 
+      if (payment.order.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException('Cancelled orders cannot be collected');
+      }
+
       if (payment.method !== PaymentMethod.CASH_ON_DELIVERY) {
         throw new BadRequestException('Only cash-on-delivery payments can be collected');
       }
