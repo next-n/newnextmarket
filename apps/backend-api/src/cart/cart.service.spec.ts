@@ -270,6 +270,16 @@ describe('CartService', () => {
     });
   });
 
+  it('returns the active cart when removing an already-missing cart item', async () => {
+    prisma.cartItem.findFirst.mockResolvedValue(null);
+    jest.spyOn(service, 'getOrCreateActiveCart').mockResolvedValue(emptyCart);
+
+    const response = await service.removeItem('customer_1', 'stale_item');
+
+    expect(response.items).toHaveLength(0);
+    expect(prisma.cartItem.delete).not.toHaveBeenCalled();
+  });
+
   it('clears the active cart and removes its coupon', async () => {
     jest
       .spyOn(service, 'getOrCreateActiveCart')

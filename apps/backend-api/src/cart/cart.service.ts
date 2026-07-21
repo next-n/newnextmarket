@@ -54,7 +54,13 @@ export class CartService {
   async getCart(userId: string) {
     const cart = await this.getOrCreateActiveCart(userId);
 
-    return this.toCartResponse(cart, 'standard', userId);
+    await this.removeUnavailableItems(cart.id);
+
+    return this.toCartResponse(
+      await this.getOrCreateActiveCart(userId, true),
+      'standard',
+      userId,
+    );
   }
 
   async addItem(userId: string, dto: AddCartItemDto) {
@@ -112,7 +118,11 @@ export class CartService {
     });
 
     if (!item) {
-      throw new NotFoundException('Cart item not found');
+      return this.toCartResponse(
+        await this.getOrCreateActiveCart(userId, true),
+        'standard',
+        userId,
+      );
     }
 
     await this.ensureVariantCanBePurchased(item.productVariantId, dto.quantity);
@@ -142,7 +152,11 @@ export class CartService {
     });
 
     if (!item) {
-      throw new NotFoundException('Cart item not found');
+      return this.toCartResponse(
+        await this.getOrCreateActiveCart(userId, true),
+        'standard',
+        userId,
+      );
     }
 
     await this.prisma.cartItem.delete({ where: { id: item.id } });
@@ -168,6 +182,20 @@ export class CartService {
       'standard',
       userId,
     );
+  }
+
+  private async removeUnavailableItems(cartId: string) {
+    await this.prisma.cartItem.deleteMany({
+      where: {
+        cartId,
+        OR: [
+          { productVariant: { deletedAt: { not: null } } },
+          { productVariant: { status: { not: VariantStatus.ACTIVE } } },
+          { productVariant: { product: { deletedAt: { not: null } } } },
+          { productVariant: { product: { status: { not: ProductStatus.ACTIVE } } } },
+        ],
+      },
+    });
   }
 
   async applyCoupon(userId: string, dto: ApplyCouponDto) {
