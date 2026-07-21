@@ -1,4 +1,5 @@
-const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
+const configuredApiUrl = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
+const API_URL = `${configuredApiUrl.replace(/\/$/, "")}${configuredApiUrl.replace(/\/$/, "").endsWith("/api") ? "" : "/api"}`;
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
 
 export function resolveAssetUrl(url?: string | null) {
