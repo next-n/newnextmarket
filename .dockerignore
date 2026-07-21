@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.next
+**/.next
+coverage
+**/coverage
+.env
+.env.*
+!.env.example
+apps/backend-api/uploads
+**/logs
+*.log
+.git
+.gitignore

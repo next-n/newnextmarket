@@ -16,8 +16,8 @@ coverage
 !.env.example
 !**/.env.example
 
-uploads
-**/uploads
+/uploads/
+apps/backend-api/uploads/
 
 logs
 **/logs
