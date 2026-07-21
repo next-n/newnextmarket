@@ -25,6 +25,7 @@ export function ProductPurchase({ product }: { product: StoreProduct }) {
     try {
       await customerRequest("/cart/items", { method: "POST", body: JSON.stringify({ productVariantId: selected.id, quantity }) });
       setMessage("Added to cart");
+      window.dispatchEvent(new Event("cart-updated"));
       router.refresh();
     } catch (error: any) {
       setMessage(error.message);
