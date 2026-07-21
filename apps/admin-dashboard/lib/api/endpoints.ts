@@ -1,0 +1,31 @@
+export const API_ENDPOINTS = {
+  adminAuth: {
+    login: "/admin/auth/login",
+    logout: "/admin/auth/logout",
+    me: "/admin/auth/me",
+  },
+  products: "/admin/products",
+  productVariants: (productId: string) => `/admin/products/${productId}/variants`,
+  variant: (variantId: string) => `/admin/products/variant/${variantId}`,
+  categories: "/admin/categories",
+  collections: "/admin/collections",
+  inventory: "/admin/inventory",
+  orders: "/admin/orders",
+  customers: "/admin/customers",
+  payments: "/admin/payments",
+  coupons: "/admin/coupons",
+  banners: "/admin/banners",
+  reviews: "/admin/reviews",
+  reports: {
+    overview: "/admin/reports/overview",
+    sales: "/admin/reports/sales",
+    orders: "/admin/reports/orders",
+    products: "/admin/reports/products",
+    customers: "/admin/reports/customers",
+  },
+  settings: "/admin/settings",
+  uploads: {
+    productImage: "/admin/uploads/product-image",
+    delete: (id: string) => `/admin/uploads/${id}`,
+  },
+} as const;

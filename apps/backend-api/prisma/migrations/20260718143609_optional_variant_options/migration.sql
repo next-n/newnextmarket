@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "ProductVariant" ALTER COLUMN "size" DROP NOT NULL,
+ALTER COLUMN "width" DROP NOT NULL,
+ALTER COLUMN "color" DROP NOT NULL;

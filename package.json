@@ -1,0 +1,26 @@
+{
+  "name": "sportwear",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo for the Sportwear ecommerce platform.",
+  "workspaces": [
+    "apps/backend-api",
+    "apps/admin-dashboard",
+    "apps/customer-frontend",
+    "packages/shared"
+  ],
+  "scripts": {
+    "backend:dev": "npm --prefix apps/backend-api run dev",
+    "backend:build": "npm --prefix apps/backend-api run build",
+    "backend:test": "npm --prefix apps/backend-api run test",
+    "backend:generate": "npm --prefix apps/backend-api run prisma:generate",
+    "backend:migrate": "npm --prefix apps/backend-api run prisma:migrate",
+    "backend:seed": "npm --prefix apps/backend-api run prisma:seed",
+    "backend:seed:production": "npm --prefix apps/backend-api run prisma:seed:production",
+    "backend:studio": "npm --prefix apps/backend-api run prisma:studio",
+    "admin:dev": "npm run dev -w apps/admin-dashboard",
+    "admin:build": "npm run build -w apps/admin-dashboard",
+    "admin:start": "npm run start -w apps/admin-dashboard",
+    "admin:lint": "npm run lint -w apps/admin-dashboard"
+  }
+}
