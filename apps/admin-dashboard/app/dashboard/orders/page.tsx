@@ -10,7 +10,7 @@ const statuses = ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", 
 function paymentLabel(payment: any) {
   if (!payment) return "No payment";
   const method = payment.method === "CASH_ON_DELIVERY" ? "COD" : payment.method;
-  const status = payment.status === "PAID" ? "Collected" : payment.status;
+  const status = payment.status === "PAID" ? "Collected" : payment.status === "CANCELLED" ? "Cancelled" : payment.status;
   return `${method} · ${status}`;
 }
 

@@ -239,18 +239,33 @@ export class OrdersService {
     const hasPaidPayment = (order.payments ?? []).some(
       (payment: any) => payment.status === PaymentStatus.PAID,
     );
-    const updatedOrder = await this.prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status: OrderStatus.CANCELLED,
-        cancelledAt: new Date(),
-        notes: reason
-          ? [order.notes, `Cancellation reason: ${reason}`]
-              .filter(Boolean)
-              .join('\n')
-          : order.notes,
-      },
-      include: this.orderInclude(includeAdmin),
+    const updatedOrder = await this.prisma.$transaction(async (tx: any) => {
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelledAt: new Date(),
+          notes: reason
+            ? [order.notes, `Cancellation reason: ${reason}`]
+                .filter(Boolean)
+                .join('\n')
+            : order.notes,
+        },
+        include: this.orderInclude(includeAdmin),
+      });
+
+      await tx.payment.updateMany({
+        where: {
+          orderId: order.id,
+          status: PaymentStatus.PENDING,
+        },
+        data: { status: PaymentStatus.CANCELLED },
+      });
+
+      return tx.order.findUniqueOrThrow({
+        where: { id: order.id },
+        include: this.orderInclude(includeAdmin),
+      });
     });
 
     return {

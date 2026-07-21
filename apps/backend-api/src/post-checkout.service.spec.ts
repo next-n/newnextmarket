@@ -107,6 +107,7 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
       payment: {
         findUnique: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
       refund: {
         create: jest.fn(),
@@ -210,10 +211,16 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
 
   it('customer can cancel an eligible unpaid order', async () => {
     prisma.order.findFirst.mockResolvedValue(order);
-    prisma.order.update.mockResolvedValue({
+    tx.order.update.mockResolvedValue({
       ...order,
       status: OrderStatus.CANCELLED,
       cancelledAt: now,
+    });
+    tx.order.findUniqueOrThrow.mockResolvedValue({
+      ...order,
+      status: OrderStatus.CANCELLED,
+      cancelledAt: now,
+      payments: [{ ...paidPayment, method: PaymentMethod.CASH_ON_DELIVERY, status: PaymentStatus.CANCELLED }],
     });
 
     const response = await ordersService.cancelCustomerOrder(
@@ -224,6 +231,11 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
 
     expect(response.refundRequired).toBe(false);
     expect(response.order.status).toBe(OrderStatus.CANCELLED);
+    expect(response.order.payment!.status).toBe(PaymentStatus.CANCELLED);
+    expect(tx.payment.updateMany).toHaveBeenCalledWith({
+      where: { orderId: 'order_1', status: PaymentStatus.PENDING },
+      data: { status: PaymentStatus.CANCELLED },
+    });
   });
 
   it('customer cannot cancel delivered order', async () => {
