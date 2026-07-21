@@ -12,8 +12,10 @@ import {
   ShipmentStatus,
   VariantStatus,
 } from '@prisma/client';
+import { Optional } from '@nestjs/common';
 import { CartService, ShippingMethod } from '../cart/cart.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ShippingAddressDto } from './dto/shipping-address.dto';
@@ -24,6 +26,7 @@ export class CheckoutService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cartService: CartService,
+    @Optional() private readonly redis?: RedisService,
   ) {}
 
   async validate(userId: string) {
@@ -199,11 +202,12 @@ export class CheckoutService {
       return finalizedOrder;
     });
 
+    await this.invalidateCatalogCache();
     return this.toCheckoutResponse(order, { reusedExistingOrder: false });
   }
 
   async confirmPayment(userId: string, dto: ConfirmPaymentDto) {
-    return this.prisma.$transaction(async (transaction) => {
+    const response = await this.prisma.$transaction(async (transaction) => {
       const tx: any = transaction;
       const order = await tx.order.findFirst({
         where: {
@@ -403,6 +407,15 @@ export class CheckoutService {
         cartCleared: true,
       });
     });
+    await this.invalidateCatalogCache();
+    return response;
+  }
+
+  private async invalidateCatalogCache(): Promise<void> {
+    await Promise.all([
+      this.redis?.invalidate('catalog'),
+      this.redis?.invalidate('homepage'),
+    ]);
   }
 
   private orderInclude(): any {
