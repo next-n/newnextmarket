@@ -58,11 +58,13 @@ Use this checklist before starting admin dashboard work or handing the API to an
 - [ ] Stock cannot go below zero.
 - [ ] Refund amount cannot exceed paid amount minus prior refunds.
 
-## Pre-Dashboard Readiness
+## MVP Handoff Readiness
 
 - [ ] `docs/api-summary.md` matches the current controllers.
 - [ ] README setup, migration, seed, and Swagger instructions are current.
 - [ ] Default seed permissions include all admin resources used by dashboard routes.
 - [ ] Admin support endpoints have permission metadata where applicable.
-- [ ] No admin dashboard or customer frontend code is present in this repository.
-- [ ] Real Stripe/PayPal, email/SMS, and S3/Cloudinary are still future integration tasks.
+- [ ] Admin dashboard and customer storefront can authenticate against the API.
+- [ ] Cash on Delivery checkout, stock deduction, order tracking, and admin order status updates work.
+- [ ] Supabase Storage settings are configured for production image uploads.
+- [ ] Real Stripe/PayPal, email/SMS, and advanced merchandising remain future enhancements.

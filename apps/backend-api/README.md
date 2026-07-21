@@ -1,6 +1,6 @@
-# Ecommerce Backend API
+# NewNextMarket Backend API
 
-NestJS backend API for a New Balance-style ecommerce platform. The backend is ready for admin dashboard and customer frontend integration, but those apps are intentionally separate future projects.
+NestJS backend API used by the NewNextMarket admin dashboard and customer storefront.
 
 ## Tech Stack
 
@@ -11,7 +11,7 @@ NestJS backend API for a New Balance-style ecommerce platform. The backend is re
 - class-validator and class-transformer
 - JWT authentication
 - bcrypt password hashing
-- Local file uploads for MVP
+- Supabase Storage through the S3-compatible API, with local file storage fallback
 
 ## Setup
 
@@ -118,7 +118,7 @@ npm run prisma:migrate -- --name your_migration_name
 - Notifications
 - Audit logs
 
-See [docs/api-summary.md](docs/api-summary.md) for endpoint coverage and [docs/backend-checklist.md](docs/backend-checklist.md) for the pre-dashboard readiness checklist.
+See [docs/api-summary.md](docs/api-summary.md) for endpoint coverage and [docs/backend-checklist.md](docs/backend-checklist.md) for the readiness checklist.
 
 ## Project Structure
 
@@ -164,4 +164,4 @@ src/
 - Run Prisma migrations before starting the app.
 - Serve the `uploads/` directory behind your chosen static file strategy or replace local storage with external storage in a future infrastructure task.
 - Use HTTPS and strict CORS for production clients.
-- Real Stripe/PayPal, email/SMS, admin dashboard, and customer frontend are intentionally not included in this backend repository yet.
+- The MVP currently uses Cash on Delivery. External payment providers, email/SMS, and advanced merchandising can be added later.

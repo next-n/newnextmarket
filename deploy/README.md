@@ -1,5 +1,7 @@
 # Cloud server deployment
 
+The production architecture runs the backend API and Redis on the cloud server. The admin dashboard and customer storefront are deployed separately through Vercel and use `https://api.newnextmarket.asia/api` as their API base URL.
+
 ## Server layout
 
 - Nginx runs on the host and accepts ports 80 and 443.
