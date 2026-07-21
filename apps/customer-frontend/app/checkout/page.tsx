@@ -36,7 +36,7 @@ export default function CheckoutPage() {
   async function placeOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true); setMessage("");
-    try { const result = await customerRequest<any>("/checkout/create-order", { method: "POST", body: JSON.stringify({ paymentMethod: "CASH_ON_DELIVERY", shippingMethod, shippingAddress: { ...address, phone: address.phone || undefined, addressLine2: address.addressLine2 || undefined, state: address.state || undefined } }) }); setOrder(result.order); } catch (error: any) { setMessage(error.message); } finally { setSaving(false); }
+    try { const result = await customerRequest<any>("/checkout/create-order", { method: "POST", body: JSON.stringify({ paymentMethod: "CASH_ON_DELIVERY", shippingMethod, shippingAddress: { ...address, phone: address.phone || undefined, addressLine2: address.addressLine2 || undefined, state: address.state || undefined } }) }); setOrder(result.order); window.dispatchEvent(new Event("cart-updated")); } catch (error: any) { setMessage(error.message); } finally { setSaving(false); }
   }
 
   if (loading) return <><SiteHeader /><main className="container section"><p className="muted">Preparing checkout...</p></main></>;

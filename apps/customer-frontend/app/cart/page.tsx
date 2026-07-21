@@ -25,11 +25,11 @@ export default function CartPage() {
 
   async function update(itemId: string, quantity: number) {
     setMessage("");
-    try { setCart(await customerRequest<Cart>(`/cart/items/${itemId}`, { method: "PATCH", body: JSON.stringify({ quantity }) })); } catch (error: any) { setMessage(error.message); }
+    try { setCart(await customerRequest<Cart>(`/cart/items/${itemId}`, { method: "PATCH", body: JSON.stringify({ quantity }) })); window.dispatchEvent(new Event("cart-updated")); } catch (error: any) { setMessage(error.message); }
   }
 
   async function remove(itemId: string) {
-    try { setCart(await customerRequest<Cart>(`/cart/items/${itemId}`, { method: "DELETE" })); } catch (error: any) { setMessage(error.message); }
+    try { setCart(await customerRequest<Cart>(`/cart/items/${itemId}`, { method: "DELETE" })); window.dispatchEvent(new Event("cart-updated")); } catch (error: any) { setMessage(error.message); }
   }
 
   if (loading) return <><SiteHeader /><main className="container section"><p className="muted">Loading cart...</p></main></>;
