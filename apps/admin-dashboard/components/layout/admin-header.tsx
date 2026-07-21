@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu, Search, UserRound } from "lucide-react";
+import { Bell, Menu, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,6 @@ export function AdminHeader({ onMenu }: { onMenu: () => void }) {
         <Button variant="ghost" size="icon" aria-label="Open navigation" className="lg:hidden" onClick={onMenu}>
           <Menu className="size-5" aria-hidden="true" />
         </Button>
-        <Search className="size-4 text-muted-foreground" aria-hidden="true" />
-        <span className="truncate text-sm text-muted-foreground">Search placeholder</span>
       </div>
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" aria-label="Notifications">

@@ -1,16 +1,12 @@
 "use client";
 
 import {
-  BarChart3,
   Boxes,
   ClipboardList,
   Flag,
   Home,
   LayoutDashboard,
-  MessageSquareText,
   Package,
-  Percent,
-  Settings,
   Tags,
   Users,
   X,
@@ -27,11 +23,7 @@ const navItems = [
   { title: "Inventory", href: "/dashboard/inventory", icon: Boxes },
   { title: "Orders", href: "/dashboard/orders", icon: ClipboardList },
   { title: "Customers", href: "/dashboard/customers", icon: Users },
-  { title: "Coupons", href: "/dashboard/coupons", icon: Percent },
   { title: "Banners", href: "/dashboard/banners", icon: Flag },
-  { title: "Reviews", href: "/dashboard/reviews", icon: MessageSquareText },
-  { title: "Reports", href: "/dashboard/reports", icon: BarChart3 },
-  { title: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export function AdminSidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => void }) {
