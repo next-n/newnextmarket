@@ -22,8 +22,10 @@ const permissionMatrix: Record<string, string[]> = {
 
 const collectionSeeds = [
   ['New Arrivals', 'new-arrivals', 1],
-  ['Running Shoes', 'running-shoes', 2],
-  ['Sale', 'sale', 3],
+  ['Best Sellers', 'best-sellers', 2],
+  ['Running Shoes', 'running-shoes', 3],
+  ['Limited Edition', 'limited-edition', 4],
+  ['Sale', 'sale', 5],
 ] as const;
 
 const settingSeeds = [
