@@ -5,6 +5,7 @@ import {
   RefundStatus,
   ReturnStatus,
   ShipmentStatus,
+  VariantStatus,
 } from '@prisma/client';
 import { CheckoutService } from './checkout/checkout.service';
 import { OrdersService } from './orders/orders.service';
@@ -105,6 +106,7 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
   beforeEach(() => {
     tx = {
       payment: {
+        count: jest.fn().mockResolvedValue(0),
         findUnique: jest.fn(),
         update: jest.fn(),
         updateMany: jest.fn(),
@@ -123,6 +125,7 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
       productVariant: {
         findUnique: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
       inventoryLog: {
         findFirst: jest.fn(),
@@ -269,11 +272,10 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
     prisma.order.findFirst.mockResolvedValue(orderWithStock);
     tx.order.updateMany.mockResolvedValue({ count: 1 });
     tx.order.findUniqueOrThrow.mockResolvedValue(cancelledOrder);
-    tx.inventoryLog.findFirst.mockResolvedValue(null);
-    tx.productVariant.findUnique.mockResolvedValue({
+    tx.productVariant.update.mockResolvedValue({
       id: 'variant_1',
-      stock: 4,
-      status: 'OUT_OF_STOCK',
+      stock: 6,
+      status: VariantStatus.OUT_OF_STOCK,
     });
 
     const response = await ordersService.cancelCustomerOrder(
@@ -285,10 +287,18 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
     expect(response.order.status).toBe(OrderStatus.CANCELLED);
     expect(tx.productVariant.update).toHaveBeenCalledWith({
       where: { id: 'variant_1' },
-      data: { stock: 6, status: 'ACTIVE' },
+      data: { stock: { increment: 2 } },
+    });
+    expect(tx.productVariant.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'variant_1',
+        status: VariantStatus.OUT_OF_STOCK,
+      },
+      data: { status: VariantStatus.ACTIVE },
     });
     expect(tx.inventoryLog.create).toHaveBeenCalledWith({
       data: {
+        eventKey: 'order-cancel:order_1:variant_1',
         productVariantId: 'variant_1',
         type: 'RETURNED',
         quantity: 2,
@@ -299,26 +309,34 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
     });
   });
 
-  it('does not restore stock when the cancellation log already exists', async () => {
-    const orderWithStock = {
+  it('rejects cancellation when a payment has already been collected', async () => {
+    const paidOrder = {
       ...order,
       status: OrderStatus.CONFIRMED,
-      items: [{ productVariantId: 'variant_1', quantity: 2 }],
+      payments: [paidPayment],
     };
-    prisma.order.findFirst.mockResolvedValue(orderWithStock);
-    tx.order.updateMany.mockResolvedValue({ count: 1 });
-    tx.order.findUniqueOrThrow.mockResolvedValue({
-      ...orderWithStock,
-      status: OrderStatus.CANCELLED,
+    prisma.order.findFirst.mockResolvedValue(paidOrder);
+
+    await expect(
+      ordersService.cancelCustomerOrder('customer_1', 'order_1', {}),
+    ).rejects.toThrow('Paid orders must be refunded instead of cancelled');
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rechecks paid status inside the cancellation transaction', async () => {
+    prisma.order.findFirst.mockResolvedValue({
+      ...order,
+      status: OrderStatus.CONFIRMED,
       payments: [],
     });
-    tx.inventoryLog.findFirst.mockResolvedValue({ id: 'return_log_1' });
+    tx.payment.count.mockResolvedValue(1);
 
-    await ordersService.cancelCustomerOrder('customer_1', 'order_1', {});
+    await expect(
+      ordersService.cancelCustomerOrder('customer_1', 'order_1', {}),
+    ).rejects.toThrow('Paid orders must be refunded instead of cancelled');
 
-    expect(tx.productVariant.findUnique).not.toHaveBeenCalled();
-    expect(tx.productVariant.update).not.toHaveBeenCalled();
-    expect(tx.inventoryLog.create).not.toHaveBeenCalled();
+    expect(tx.order.updateMany).not.toHaveBeenCalled();
   });
 
   it('customer cannot cancel delivered order', async () => {
@@ -384,6 +402,42 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
         data: { status: OrderStatus.CONFIRMED },
       }),
     );
+  });
+
+  it('admin cancellation uses the guarded cancellation transaction', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      ...order,
+      status: OrderStatus.CONFIRMED,
+    });
+    tx.order.updateMany.mockResolvedValue({ count: 1 });
+    tx.order.findUniqueOrThrow.mockResolvedValue({
+      ...order,
+      status: OrderStatus.CANCELLED,
+      payments: [],
+    });
+
+    const response = await ordersService.updateOrderStatus(
+      'order_1',
+      { status: OrderStatus.CANCELLED },
+      'admin_1',
+    );
+
+    expect(response.status).toBe(OrderStatus.CANCELLED);
+    expect(tx.order.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'order_1',
+          status: {
+            in: [
+              OrderStatus.PENDING,
+              OrderStatus.CONFIRMED,
+              OrderStatus.PROCESSING,
+            ],
+          },
+        },
+      }),
+    );
+    expect(prisma.order.update).not.toHaveBeenCalled();
   });
 
   it('invalid order status transition is rejected', async () => {

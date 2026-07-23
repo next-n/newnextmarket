@@ -56,7 +56,7 @@ jest.setTimeout(60_000);
     await request(app.getHttpServer()).get('/api/admin/products').expect(401);
   });
 
-  it('runs the complete customer MVP shopping flow', async () => {
+  it('runs checkout and concurrency-safe cancellation rules end to end', async () => {
     const productsResponse = await request(app.getHttpServer())
       .get('/api/products?limit=20')
       .expect(200);
@@ -71,6 +71,20 @@ jest.setTimeout(60_000);
 
     expect(product).toBeDefined();
     expect(variant).toBeDefined();
+    const initialStock = variant.stock;
+
+    const getCurrentStock = async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/products?limit=20')
+        .expect(200);
+      const currentProduct = response.body.data.items.find(
+        (item: any) => item.id === product.id,
+      );
+      const currentVariant = currentProduct?.variants?.find(
+        (item: any) => item.id === variant.id,
+      );
+      return currentVariant?.stock;
+    };
 
     const email = `e2e-${Date.now()}@example.com`;
     const authResponse = await request(app.getHttpServer())
@@ -126,29 +140,79 @@ jest.setTimeout(60_000);
       .expect(201);
     const orderId = orderResponse.body.data.order.id;
     expect(orderId).toEqual(expect.any(String));
+    expect(await getCurrentStock()).toBe(initialStock - 1);
 
-    const paymentResponse = await request(app.getHttpServer())
-      .post('/api/checkout/confirm-payment')
+    const cancellationResponse = await request(app.getHttpServer())
+      .post(`/api/orders/${orderId}/cancel`)
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ orderId, success: true, transactionId: `e2e-${Date.now()}` })
-      .expect(200);
-    // COD checkout reserves stock while the order is created. Confirmation
-    // changes payment/order state but must not decrement inventory again.
-    expect(paymentResponse.body.data.inventoryAdjusted).toBe(false);
+      .send({ reason: 'E2E cancellation test' })
+      .expect(201);
+    expect(cancellationResponse.body.data.order.status).toBe('CANCELLED');
+    expect(cancellationResponse.body.data.order.payment.status).toBe(
+      'CANCELLED',
+    );
+    expect(await getCurrentStock()).toBe(initialStock);
 
-    const repeatedPaymentResponse = await request(app.getHttpServer())
-      .post('/api/checkout/confirm-payment')
+    await request(app.getHttpServer())
+      .post(`/api/orders/${orderId}/cancel`)
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ orderId, success: true })
+      .send({ reason: 'Repeated cancellation' })
+      .expect(400);
+    expect(await getCurrentStock()).toBe(initialStock);
+
+    await request(app.getHttpServer())
+      .post('/api/cart/items')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ productVariantId: variant.id, quantity: 1 })
+      .expect(201);
+
+    const paidOrderResponse = await request(app.getHttpServer())
+      .post('/api/checkout/create-order')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ shippingMethod: 'standard', shippingAddress })
+      .expect(201);
+    const paidOrderId = paidOrderResponse.body.data.order.id;
+    const paymentId = paidOrderResponse.body.data.payment.id;
+    expect(await getCurrentStock()).toBe(initialStock - 1);
+
+    const adminLoginResponse = await request(app.getHttpServer())
+      .post('/api/admin/auth/login')
+      .send({ email: 'admin@example.com', password: 'Admin123!' })
       .expect(200);
-    expect(repeatedPaymentResponse.body.data.alreadyProcessed).toBe(true);
+
+    await request(app.getHttpServer())
+      .post(`/api/admin/payments/${paymentId}/collect`)
+      .set(
+        'Authorization',
+        `Bearer ${adminLoginResponse.body.data.accessToken}`,
+      )
+      .expect(201);
+
+    const paidCancellationResponse = await request(app.getHttpServer())
+      .post(`/api/orders/${paidOrderId}/cancel`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ reason: 'Paid order must not cancel directly' })
+      .expect(400);
+    expect(paidCancellationResponse.body.message).toContain(
+      'Paid orders must be refunded',
+    );
+    expect(await getCurrentStock()).toBe(initialStock - 1);
 
     const ordersResponse = await request(app.getHttpServer())
       .get('/api/orders')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
     expect(ordersResponse.body.data.items).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: orderId })]),
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: orderId,
+          status: 'CANCELLED',
+        }),
+        expect.objectContaining({
+          id: paidOrderId,
+          status: 'CONFIRMED',
+        }),
+      ]),
     );
   });
 

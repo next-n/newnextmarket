@@ -394,6 +394,7 @@ model CollectionProduct {
 
 model InventoryLog {
   id               String           @id @default(cuid())
+  eventKey         String?          @unique
   productVariantId String
   adminId          String?
   type             InventoryLogType
