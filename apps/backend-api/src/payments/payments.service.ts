@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import {
   AuditAction,
   OrderStatus,
@@ -155,15 +156,49 @@ export class PaymentsService {
         throw new BadRequestException('Only pending payments can be collected');
       }
 
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
+      // The order can be cancelled concurrently after the read above. Make
+      // collection a conditional state transition so a stale read can never
+      // turn a cancelled order's payment into PAID.
+      const collection = await tx.payment.updateMany({
+        where: {
+          id: payment.id,
+          method: PaymentMethod.CASH_ON_DELIVERY,
+          status: PaymentStatus.PENDING,
+          order: { status: { not: OrderStatus.CANCELLED } },
+        },
         data: {
           status: PaymentStatus.PAID,
           paidAt: new Date(),
           transactionId: payment.transactionId ?? `cod_${payment.id}`,
         },
+      });
+
+      if (collection.count !== 1) {
+        const currentPayment = await tx.payment.findUnique({
+          where: { id: payment.id },
+          include: { order: true },
+        });
+
+        if (currentPayment?.order.status === OrderStatus.CANCELLED) {
+          throw new BadRequestException('Cancelled orders cannot be collected');
+        }
+        if (currentPayment?.status === PaymentStatus.PAID) {
+          return {
+            alreadyCollected: true,
+            payment: this.toPaymentResponse(currentPayment),
+          };
+        }
+
+        throw new BadRequestException('Only pending payments can be collected');
+      }
+
+      const updatedPayment = await tx.payment.findUnique({
+        where: { id: payment.id },
         include: this.paymentInclude(),
       });
+      if (!updatedPayment) {
+        throw new NotFoundException('Payment not found');
+      }
 
       await this.audit(tx, adminId, AuditAction.UPDATE, 'Payment', payment.id, {
         method: PaymentMethod.CASH_ON_DELIVERY,
@@ -175,6 +210,8 @@ export class PaymentsService {
         alreadyCollected: false,
         payment: this.toPaymentResponse(updatedPayment),
       };
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
   }
 

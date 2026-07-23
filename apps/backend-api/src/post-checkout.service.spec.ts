@@ -479,8 +479,10 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
       paidAt: now,
       refunds: [],
     };
-    tx.payment.findUnique.mockResolvedValue(pendingCodPayment);
-    tx.payment.update.mockResolvedValue(collectedPayment);
+    tx.payment.findUnique
+      .mockResolvedValueOnce(pendingCodPayment)
+      .mockResolvedValueOnce(collectedPayment);
+    tx.payment.updateMany.mockResolvedValue({ count: 1 });
 
     const response = await paymentsService.collectCashOnDelivery(
       'payment_1',
@@ -489,14 +491,18 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
 
     expect(response.alreadyCollected).toBe(false);
     expect(response.payment.status).toBe(PaymentStatus.PAID);
-    expect(tx.payment.update).toHaveBeenCalledWith({
-      where: { id: 'payment_1' },
+    expect(tx.payment.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'payment_1',
+        method: PaymentMethod.CASH_ON_DELIVERY,
+        status: PaymentStatus.PENDING,
+        order: { status: { not: OrderStatus.CANCELLED } },
+      },
       data: {
         status: PaymentStatus.PAID,
         paidAt: expect.any(Date),
         transactionId: 'cod_payment_1',
       },
-      include: expect.anything(),
     });
     expect(tx.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -519,6 +525,36 @@ describe('Post-checkout order, payment, shipping, and return services', () => {
       paymentsService.collectCashOnDelivery('payment_1', 'admin_1'),
     ).rejects.toThrow('Cancelled orders cannot be collected');
     expect(tx.payment.update).not.toHaveBeenCalled();
+  });
+
+  it('does not collect after cancellation wins the conditional transition', async () => {
+    tx.payment.findUnique
+      .mockResolvedValueOnce({
+        ...paidPayment,
+        method: PaymentMethod.CASH_ON_DELIVERY,
+        status: PaymentStatus.PENDING,
+        order: { ...order, status: OrderStatus.CONFIRMED },
+      })
+      .mockResolvedValueOnce({
+        ...paidPayment,
+        method: PaymentMethod.CASH_ON_DELIVERY,
+        status: PaymentStatus.CANCELLED,
+        order: { ...order, status: OrderStatus.CANCELLED },
+      });
+    tx.payment.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      paymentsService.collectCashOnDelivery('payment_1', 'admin_1'),
+    ).rejects.toThrow('Cancelled orders cannot be collected');
+    expect(tx.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: PaymentStatus.PENDING,
+          order: { status: { not: OrderStatus.CANCELLED } },
+        }),
+      }),
+    );
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it('payment confirm reuses checkout confirmation and remains idempotent', async () => {
