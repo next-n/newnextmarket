@@ -7,8 +7,16 @@ export function resolveAssetUrl(url?: string | null) {
   return url.startsWith("/") ? `${API_ORIGIN}${url}` : url;
 }
 
-export async function getApi<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, { next: { revalidate: 30 } });
+export async function getApi<T>(
+  path: string,
+  options: { fresh?: boolean } = {},
+): Promise<T> {
+  const response = await fetch(
+    `${API_URL}${path}`,
+    options.fresh
+      ? { cache: "no-store" }
+      : { next: { revalidate: 30 } },
+  );
   if (!response.ok) throw new Error(`API request failed: ${response.status}`);
   const body = await response.json();
   return body.data as T;

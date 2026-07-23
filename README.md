@@ -1,6 +1,6 @@
 # NewNextMarket
 
-NewNextMarket is a deployed ecommerce MVP for managing a product catalog and selling products through a customer storefront. It is a single-store ecommerce platform, not a multi-vendor marketplace.
+NewNextMarket is a production-ready single-store ecommerce MVP for managing a product catalog and selling products through a customer storefront. It is not a multi-vendor marketplace.
 
 ## Applications
 
