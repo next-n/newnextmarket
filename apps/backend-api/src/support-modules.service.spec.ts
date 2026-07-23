@@ -237,8 +237,8 @@ describe('Support modules services', () => {
 
   it('public settings do not expose sensitive values and admin can update settings', async () => {
     const service = new SettingsService(prisma, auditLogs);
-    prisma.setting.findMany.mockResolvedValue([{ key: 'store_name', value: 'Sportwear' }]);
-    await expect(service.publicSettings()).resolves.toEqual({ store_name: 'Sportwear' });
+    prisma.setting.findMany.mockResolvedValue([{ key: 'store_name', value: 'NewNextMarket' }]);
+    await expect(service.publicSettings()).resolves.toEqual({ store_name: 'NewNextMarket' });
     expect(prisma.setting.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { key: { in: expect.arrayContaining(['store_name', 'currency']) } } }));
     await service.update({ settings: { currency: 'USD', tax_rate: 0.1 } }, 'admin_1');
     expect(prisma.setting.upsert).toHaveBeenCalledTimes(2);

@@ -2,9 +2,11 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   AuditAction,
+  InventoryLogType,
   OrderStatus,
   PaymentStatus,
 } from '@prisma/client';
@@ -14,6 +16,7 @@ import { CancelOrderDto } from './dto/cancel-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { RedisService } from '../redis/redis.service';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
@@ -41,6 +44,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
+    @Optional() private readonly redis?: RedisService,
   ) {}
 
   async listCustomerOrders(userId: string, query: OrderQueryDto) {
@@ -169,19 +173,26 @@ export class OrdersService {
 
     if (dto.status === OrderStatus.CANCELLED) {
       const updatedOrder = await this.prisma.$transaction(async (tx: any) => {
-        await tx.order.update({
+        const cancellation = await tx.order.updateMany({
           where: { id },
           data: { status: OrderStatus.CANCELLED, cancelledAt: new Date() },
         });
+        if (cancellation.count !== 1) {
+          throw new BadRequestException('Order cannot be cancelled');
+        }
         await tx.payment.updateMany({
           where: { orderId: id, status: PaymentStatus.PENDING },
           data: { status: PaymentStatus.CANCELLED },
         });
-        return tx.order.findUniqueOrThrow({
+        const cancelledOrder = await tx.order.findUniqueOrThrow({
           where: { id },
           include: this.orderInclude(true),
         });
+        await this.restoreCancelledOrderInventory(tx, cancelledOrder);
+        return cancelledOrder;
       });
+
+      await this.invalidateCatalogCache();
 
       await this.audit(adminId, AuditAction.UPDATE, 'Order', id, {
         from: order.status,
@@ -263,8 +274,11 @@ export class OrdersService {
       (payment: any) => payment.status === PaymentStatus.PAID,
     );
     const updatedOrder = await this.prisma.$transaction(async (tx: any) => {
-      await tx.order.update({
-        where: { id: order.id },
+      const cancellation = await tx.order.updateMany({
+        where: {
+          id: order.id,
+          status: { in: CANCELLABLE_STATUSES },
+        },
         data: {
           status: OrderStatus.CANCELLED,
           cancelledAt: new Date(),
@@ -274,8 +288,10 @@ export class OrdersService {
                 .join('\n')
             : order.notes,
         },
-        include: this.orderInclude(includeAdmin),
       });
+      if (cancellation.count !== 1) {
+        throw new BadRequestException('Order cannot be cancelled');
+      }
 
       await tx.payment.updateMany({
         where: {
@@ -285,16 +301,86 @@ export class OrdersService {
         data: { status: PaymentStatus.CANCELLED },
       });
 
-      return tx.order.findUniqueOrThrow({
+      const cancelledOrder = await tx.order.findUniqueOrThrow({
         where: { id: order.id },
         include: this.orderInclude(includeAdmin),
       });
+      await this.restoreCancelledOrderInventory(tx, cancelledOrder);
+      return cancelledOrder;
     });
+
+    await this.invalidateCatalogCache();
 
     return {
       order: this.toOrderResponse(updatedOrder, includeAdmin),
       refundRequired: hasPaidPayment,
     };
+  }
+
+  private async restoreCancelledOrderInventory(tx: any, cancelledOrder: any) {
+    const quantitiesByVariant = new Map<string, number>();
+    for (const item of cancelledOrder.items ?? []) {
+      if (!item.productVariantId || item.quantity <= 0) {
+        continue;
+      }
+      quantitiesByVariant.set(
+        item.productVariantId,
+        (quantitiesByVariant.get(item.productVariantId) ?? 0) + item.quantity,
+      );
+    }
+
+    for (const [productVariantId, quantity] of quantitiesByVariant) {
+      const note = `Cancelled order ${cancelledOrder.orderNumber}`;
+      const alreadyRestored = await tx.inventoryLog.findFirst({
+        where: {
+          productVariantId,
+          type: InventoryLogType.RETURNED,
+          note,
+        },
+        select: { id: true },
+      });
+
+      if (alreadyRestored) {
+        continue;
+      }
+
+      const variant = await tx.productVariant.findUnique({
+        where: { id: productVariantId },
+      });
+      if (!variant) {
+        continue;
+      }
+
+      const stockBefore = variant.stock;
+      const stockAfter = stockBefore + quantity;
+      await tx.productVariant.update({
+        where: { id: productVariantId },
+        data: {
+          stock: stockAfter,
+          status:
+            variant.status === 'OUT_OF_STOCK'
+              ? 'ACTIVE'
+              : variant.status,
+        },
+      });
+      await tx.inventoryLog.create({
+        data: {
+          productVariantId,
+          type: InventoryLogType.RETURNED,
+          quantity,
+          stockBefore,
+          stockAfter,
+          note,
+        },
+      });
+    }
+  }
+
+  private async invalidateCatalogCache(): Promise<void> {
+    await Promise.all([
+      this.redis?.invalidate('catalog'),
+      this.redis?.invalidate('homepage'),
+    ]);
   }
 
   private assertValidTransition(from: OrderStatus, to: OrderStatus) {

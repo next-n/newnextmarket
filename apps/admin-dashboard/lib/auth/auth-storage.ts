@@ -1,5 +1,5 @@
-const ACCESS_TOKEN_KEY = "sportwear_admin_access_token";
-const REFRESH_TOKEN_KEY = "sportwear_admin_refresh_token";
+const ACCESS_TOKEN_KEY = "newnextmarket_admin_access_token";
+const REFRESH_TOKEN_KEY = "newnextmarket_admin_refresh_token";
 
 function canUseStorage() {
   try {

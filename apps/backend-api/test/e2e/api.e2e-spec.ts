@@ -132,7 +132,9 @@ jest.setTimeout(60_000);
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ orderId, success: true, transactionId: `e2e-${Date.now()}` })
       .expect(200);
-    expect(paymentResponse.body.data.inventoryAdjusted).toBe(true);
+    // COD checkout reserves stock while the order is created. Confirmation
+    // changes payment/order state but must not decrement inventory again.
+    expect(paymentResponse.body.data.inventoryAdjusted).toBe(false);
 
     const repeatedPaymentResponse = await request(app.getHttpServer())
       .post('/api/checkout/confirm-payment')

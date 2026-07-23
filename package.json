@@ -1,8 +1,8 @@
 {
-  "name": "sportwear",
+  "name": "newnextmarket",
   "version": "0.1.0",
   "private": true,
-  "description": "Monorepo for the Sportwear ecommerce platform.",
+  "description": "Monorepo for the NewNextMarket ecommerce platform.",
   "workspaces": [
     "apps/backend-api",
     "apps/admin-dashboard",

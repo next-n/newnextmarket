@@ -1,14 +1,14 @@
 {
   "name": "ecommerce-backend-api",
   "version": "0.1.0",
-  "description": "NestJS backend API foundation for a New Balance-style ecommerce platform.",
+  "description": "NestJS backend API for the NewNextMarket ecommerce platform.",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/src/main.js",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
     "test:storage": "jest --config test/jest-e2e.json --runInBand test/e2e/api.e2e-spec.ts --testNamePattern=uploads",
     "test:product-image": "jest --config test/jest-e2e.json --runInBand test/e2e/api.e2e-spec.ts --testNamePattern=creates a product",
@@ -30,6 +30,8 @@
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "express-rate-limit": "^8.6.0",
+    "helmet": "^8.3.0",
     "ioredis": "^5.4.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

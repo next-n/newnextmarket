@@ -1,6 +1,6 @@
 # NewNextMarket
 
-NewNextMarket is an MVP ecommerce platform for managing a product catalog and selling products through a customer storefront.
+NewNextMarket is a production-ready ecommerce MVP for managing a product catalog and selling products through a customer storefront. It is a single-store ecommerce platform, not a multi-vendor marketplace.
 
 ## Applications
 
@@ -10,7 +10,18 @@ NewNextMarket is an MVP ecommerce platform for managing a product catalog and se
 
 ## Architecture
 
-The frontends communicate with the backend through the REST API. PostgreSQL/Supabase is the source of truth for catalog, inventory, carts, and orders. Redis is an optional cache for public catalog and homepage data. Product and banner images use Supabase Storage when configured, with local storage available as a fallback.
+```text
+Customer storefront (Vercel) ─┐
+                              ├─ HTTPS REST API (Nginx → NestJS)
+Admin dashboard (Vercel) ────┘                         │
+                                                      ├─ PostgreSQL / Supabase
+                                                      ├─ Redis cache
+                                                      └─ Supabase Storage
+```
+
+The frontends communicate with the backend through the REST API. PostgreSQL/Supabase is the source of truth for catalog, inventory, carts, and orders. Redis caches public catalog and homepage reads; inventory and checkout writes invalidate the relevant cache namespaces. Product and banner images use Supabase Storage when configured, with local storage available as a fallback.
+
+Checkout is currently Cash on Delivery. Order creation decrements stock in a database transaction, and cancelling an eligible order restores stock exactly once with a compensating inventory log.
 
 ## Local setup
 
@@ -41,5 +52,23 @@ npm run backend:test
 npm run admin:build
 npm run build -w apps/customer-frontend
 ```
+
+Backend end-to-end tests require a dedicated test database and Redis instance:
+
+```bash
+RUN_E2E=true npm run test:e2e -w apps/backend-api
+```
+
+Do not point E2E tests at the production database.
+
+## Deployment
+
+- Customer storefront: `https://www.newnextmarket.asia`
+- Admin dashboard: `https://admin.newnextmarket.asia`
+- Backend API: `https://api.newnextmarket.asia/api`
+
+The backend runs on the cloud server behind Nginx with HTTPS termination. Redis is private to the server and PostgreSQL is hosted by Supabase.
+
+Production requires `DATABASE_URL`, `JWT_SECRET` (at least 32 characters), and an explicit `CORS_ORIGIN` list. The API refuses to start when these are missing or unsafe.
 
 See `apps/backend-api/docs/api-summary.md` for the API reference and `deploy/README.md` for cloud deployment.

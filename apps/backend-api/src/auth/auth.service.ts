@@ -482,7 +482,11 @@ export class AuthService {
   }
 
   private getJwtSecret(): string {
-    return this.configService.get<string>('jwt.secret') ?? 'change-me';
+    const secret = this.configService.get<string>('jwt.secret');
+    if (!secret) {
+      throw new Error('JWT secret is not configured');
+    }
+    return secret;
   }
 
   private getJwtExpiresIn(): JwtSignOptions['expiresIn'] {

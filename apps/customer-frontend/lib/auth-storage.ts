@@ -1,5 +1,5 @@
-const ACCESS_TOKEN_KEY = "sportwear_customer_access_token";
-const REFRESH_TOKEN_KEY = "sportwear_customer_refresh_token";
+const ACCESS_TOKEN_KEY = "newnextmarket_customer_access_token";
+const REFRESH_TOKEN_KEY = "newnextmarket_customer_refresh_token";
 
 function storage() {
   return typeof window !== "undefined" ? window.localStorage : null;
